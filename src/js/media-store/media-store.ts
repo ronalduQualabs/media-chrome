@@ -557,4 +557,355 @@ const createMediaStore = ({
   };
 };
 
+export const createMediaStoreForSolid = ({
+  media,
+  fullscreenElement,
+  documentElement,
+  stateMediator = defaultStateMediator,
+  requestMap = defaultRequestMap,
+  options = {},
+  monitorStateOwnersOnlyWithSubscriptions = true,
+}: MediaStoreConfig): MediaStore => {
+  const callbacks = [];
+
+  const stateOwners: any = {
+    options: { ...options },
+  };
+
+  let state: Partial<MediaState> = Object.freeze({
+    mediaPreviewTime: undefined,
+    mediaPreviewImage: undefined,
+    mediaPreviewCoords: undefined,
+    mediaPreviewChapter: undefined,
+  });
+
+  const updateState = (nextStateDelta: any) => {
+    if (nextStateDelta == undefined) return;
+    if (areValuesEq(nextStateDelta, state)) {
+      return;
+    }
+
+    state = Object.freeze({
+      ...state,
+      ...nextStateDelta,
+    });
+
+    callbacks.forEach((cb) => cb(state));
+  };
+
+  const updateStateFromFacade = () => {
+    const nextState = Object.entries(stateMediator).reduce(
+      (nextState, [stateName, { get }]) => {
+        nextState[stateName] = get(stateOwners);
+        return nextState;
+      },
+      {}
+    );
+
+    updateState(nextState);
+  };
+
+  const stateUpdateHandlers = {};
+
+  let nextStateOwners = undefined;
+
+  const updateStateOwners = async (
+    nextStateOwnersDelta: any,
+    nextSubscriberCount?: number
+  ) => {
+    const pendingUpdate = !!nextStateOwners;
+    nextStateOwners = {
+      ...stateOwners,
+      ...(nextStateOwners ?? {}),
+      ...nextStateOwnersDelta,
+    };
+
+    if (pendingUpdate) return;
+
+    await prepareStateOwners(...Object.values(nextStateOwnersDelta));
+
+    const shouldTeardownFromSubscriberCount =
+      callbacks.length > 0 &&
+      nextSubscriberCount === 0 &&
+      monitorStateOwnersOnlyWithSubscriptions;
+
+    const mediaChanged = stateOwners.media !== nextStateOwners.media;
+    const textTracksChanged =
+      stateOwners.media?.textTracks !== nextStateOwners.media?.textTracks;
+    const videoRenditionsChanged =
+      stateOwners.media?.videoRenditions !==
+      nextStateOwners.media?.videoRenditions;
+    const audioTracksChanged =
+      stateOwners.media?.audioTracks !== nextStateOwners.media?.audioTracks;
+    const remoteChanged =
+      stateOwners.media?.remote !== nextStateOwners.media?.remote;
+    const rootNodeChanged =
+      stateOwners.documentElement !== nextStateOwners.documentElement;
+
+    const teardownMedia =
+      !!stateOwners.media &&
+      (mediaChanged || shouldTeardownFromSubscriberCount);
+
+    const teardownTextTracks =
+      !!stateOwners.media?.textTracks &&
+      (textTracksChanged || shouldTeardownFromSubscriberCount);
+
+    const teardownVideoRenditions =
+      !!stateOwners.media?.videoRenditions &&
+      (videoRenditionsChanged || shouldTeardownFromSubscriberCount);
+
+    const teardownAudioTracks =
+      !!stateOwners.media?.audioTracks &&
+      (audioTracksChanged || shouldTeardownFromSubscriberCount);
+
+    const teardownRemote =
+      !!stateOwners.media?.remote &&
+      (remoteChanged || shouldTeardownFromSubscriberCount);
+
+    const teardownRootNode =
+      !!stateOwners.documentElement &&
+      (rootNodeChanged || shouldTeardownFromSubscriberCount);
+
+    const teardownSomething =
+      teardownMedia ||
+      teardownTextTracks ||
+      teardownVideoRenditions ||
+      teardownAudioTracks ||
+      teardownRemote ||
+      teardownRootNode;
+
+    const shouldSetupFromSubscriberCount =
+      callbacks.length === 0 &&
+      nextSubscriberCount === 1 &&
+      monitorStateOwnersOnlyWithSubscriptions;
+
+    const setupMedia =
+      !!nextStateOwners.media &&
+      (mediaChanged || shouldSetupFromSubscriberCount);
+
+    const setupTextTracks =
+      !!nextStateOwners.media?.textTracks &&
+      (textTracksChanged || shouldSetupFromSubscriberCount);
+
+    const setupVideoRenditions =
+      !!nextStateOwners.media?.videoRenditions &&
+      (videoRenditionsChanged || shouldSetupFromSubscriberCount);
+
+    const setupAudioTracks =
+      !!nextStateOwners.media?.audioTracks &&
+      (audioTracksChanged || shouldSetupFromSubscriberCount);
+
+    const setupRemote =
+      !!nextStateOwners.media?.remote &&
+      (remoteChanged || shouldSetupFromSubscriberCount);
+
+    const setupRootNode =
+      !!nextStateOwners.documentElement &&
+      (rootNodeChanged || shouldSetupFromSubscriberCount);
+
+    const setupSomething =
+      setupMedia ||
+      setupTextTracks ||
+      setupVideoRenditions ||
+      setupAudioTracks ||
+      setupRemote ||
+      setupRootNode;
+
+    const somethingToDo = teardownSomething || setupSomething;
+
+    if (!somethingToDo) {
+      Object.entries(nextStateOwners).forEach(
+        ([stateOwnerName, stateOwner]) => {
+          stateOwners[stateOwnerName] = stateOwner;
+        }
+      );
+      updateStateFromFacade();
+      nextStateOwners = undefined;
+      return;
+    }
+
+    Object.entries(stateMediator).forEach(
+      ([
+        stateName,
+        {
+          get,
+          mediaEvents = [],
+          textTracksEvents = [],
+          videoRenditionsEvents = [],
+          audioTracksEvents = [],
+          remoteEvents = [],
+          rootEvents = [],
+          stateOwnersUpdateHandlers = [],
+        },
+      ]) => {
+        if (!stateUpdateHandlers[stateName]) {
+          stateUpdateHandlers[stateName] = {};
+        }
+
+        const handler = (event) => {
+          const nextValue = get(stateOwners, event);
+          updateState({ [stateName]: nextValue });
+        };
+
+        let prevHandler;
+        prevHandler = stateUpdateHandlers[stateName].mediaEvents;
+        mediaEvents.forEach((eventType) => {
+          if (prevHandler && teardownMedia) {
+            stateOwners.media.removeEventListener(eventType, prevHandler);
+            stateUpdateHandlers[stateName].mediaEvents = undefined;
+          }
+          if (setupMedia) {
+            nextStateOwners.media.addEventListener(eventType, handler);
+            stateUpdateHandlers[stateName].mediaEvents = handler;
+          }
+        });
+        prevHandler = stateUpdateHandlers[stateName].textTracksEvents;
+        textTracksEvents.forEach((eventType) => {
+          if (prevHandler && teardownTextTracks) {
+            stateOwners.media.textTracks?.removeEventListener(
+              eventType,
+              prevHandler
+            );
+            stateUpdateHandlers[stateName].textTracksEvents = undefined;
+          }
+          if (setupTextTracks) {
+            nextStateOwners.media.textTracks?.addEventListener(
+              eventType,
+              handler
+            );
+            stateUpdateHandlers[stateName].textTracksEvents = handler;
+          }
+        });
+        prevHandler = stateUpdateHandlers[stateName].videoRenditionsEvents;
+        videoRenditionsEvents.forEach((eventType) => {
+          if (prevHandler && teardownVideoRenditions) {
+            stateOwners.media.videoRenditions?.removeEventListener(
+              eventType,
+              prevHandler
+            );
+            stateUpdateHandlers[stateName].videoRenditionsEvents = undefined;
+          }
+          if (setupVideoRenditions) {
+            nextStateOwners.media.videoRenditions?.addEventListener(
+              eventType,
+              handler
+            );
+            stateUpdateHandlers[stateName].videoRenditionsEvents = handler;
+          }
+        });
+        prevHandler = stateUpdateHandlers[stateName].audioTracksEvents;
+        audioTracksEvents.forEach((eventType) => {
+          if (prevHandler && teardownAudioTracks) {
+            stateOwners.media.audioTracks?.removeEventListener(
+              eventType,
+              prevHandler
+            );
+            stateUpdateHandlers[stateName].audioTracksEvents = undefined;
+          }
+          if (setupAudioTracks) {
+            nextStateOwners.media.audioTracks?.addEventListener(
+              eventType,
+              handler
+            );
+            stateUpdateHandlers[stateName].audioTracksEvents = handler;
+          }
+        });
+        prevHandler = stateUpdateHandlers[stateName].remoteEvents;
+        remoteEvents.forEach((eventType) => {
+          if (prevHandler && teardownRemote) {
+            stateOwners.media.remote?.removeEventListener(
+              eventType,
+              prevHandler
+            );
+            stateUpdateHandlers[stateName].remoteEvents = undefined;
+          }
+          if (setupRemote) {
+            nextStateOwners.media.remote?.addEventListener(eventType, handler);
+            stateUpdateHandlers[stateName].remoteEvents = handler;
+          }
+        });
+
+        prevHandler = stateUpdateHandlers[stateName].rootEvents;
+        rootEvents.forEach((eventType) => {
+          if (prevHandler && teardownRootNode) {
+            stateOwners.documentElement.removeEventListener(
+              eventType,
+              prevHandler
+            );
+            stateUpdateHandlers[stateName].rootEvents = undefined;
+          }
+          if (setupRootNode) {
+            nextStateOwners.documentElement.addEventListener(
+              eventType,
+              handler
+            );
+            stateUpdateHandlers[stateName].rootEvents = handler;
+          }
+        });
+
+        const prevHandlerTeardown =
+          stateUpdateHandlers[stateName].stateOwnersUpdateHandlers;
+        stateOwnersUpdateHandlers.forEach((fn) => {
+          if (prevHandlerTeardown && teardownSomething) {
+            prevHandlerTeardown();
+          }
+          if (setupSomething) {
+            stateUpdateHandlers[stateName].stateOwnersUpdateHandlers = fn(
+              handler,
+              nextStateOwners
+            );
+          }
+        });
+      }
+    );
+
+    Object.entries(nextStateOwners).forEach(([stateOwnerName, stateOwner]) => {
+      stateOwners[stateOwnerName] = stateOwner;
+    });
+    updateStateFromFacade();
+    nextStateOwners = undefined;
+  };
+
+  updateStateOwners({ media, fullscreenElement, documentElement, options });
+
+  return {
+    dispatch(action) {
+      const { type, detail } = action;
+
+      if (requestMap[type] && state.mediaErrorCode == null) {
+        updateState(requestMap[type](stateMediator, stateOwners, action));
+        return;
+      }
+
+      if (type === 'mediaelementchangerequest') {
+        updateStateOwners({ media: detail });
+      } else if (type === 'fullscreenelementchangerequest') {
+        updateStateOwners({ fullscreenElement: detail });
+      } else if (type === 'documentelementchangerequest') {
+        updateStateOwners({ documentElement: detail });
+      } else if (type === 'optionschangerequest') {
+        Object.entries(detail ?? {}).forEach(([optionName, optionValue]) => {
+          stateOwners.options[optionName] = optionValue;
+        });
+      }
+    },
+    getState() {
+      return state;
+    },
+    subscribe(callback) {
+      updateStateOwners({}, callbacks.length + 1);
+      callbacks.push(callback);
+
+      callback(state);
+      return () => {
+        const idx = callbacks.indexOf(callback);
+        if (idx >= 0) {
+          updateStateOwners({}, callbacks.length - 1);
+          callbacks.splice(idx, 1);
+        }
+      };
+    },
+  };
+};
+
 export default createMediaStore;
