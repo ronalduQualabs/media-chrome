@@ -9,10 +9,16 @@
 */
 import { globalThis, document } from './utils/server-safe-globals.js';
 import { MediaUIAttributes, MediaStateChangeEvents } from './constants.js';
-import { nouns } from './labels/labels.js';
 import { observeResize, unobserveResize } from './utils/resize-observer.js';
 // Guarantee that `<media-gesture-receiver/>` is available for use in the template
 import './media-gesture-receiver.js';
+import { t } from './utils/i18n.js';
+import {
+  getBooleanAttr,
+  getStringAttr,
+  setBooleanAttr,
+  setStringAttr,
+} from './utils/element-utils.js';
 
 export const Attributes = {
   AUDIO: 'audio',
@@ -22,6 +28,7 @@ export const Attributes = {
   KEYBOARD_CONTROL: 'keyboardcontrol',
   NO_AUTOHIDE: 'noautohide',
   USER_INACTIVE: 'userinactive',
+  AUTOHIDE_OVER_CONTROLS: 'autohideovercontrols',
 };
 
 const template: HTMLTemplateElement = document.createElement('template');
@@ -172,13 +179,23 @@ template.innerHTML = /*html*/ `
       transition: var(--media-control-transition-out, opacity 1s);
     }
 
-    :host([${Attributes.USER_INACTIVE}]:not([${
+    :host([${Attributes.USER_INACTIVE}]:not([${Attributes.NO_AUTOHIDE}]):not([${
   MediaUIAttributes.MEDIA_PAUSED
 }]):not([${MediaUIAttributes.MEDIA_IS_CASTING}]):not([${
   Attributes.AUDIO
 }])) ::slotted([slot=media]) {
       cursor: none;
     }
+
+    :host([${Attributes.USER_INACTIVE}][${
+  Attributes.AUTOHIDE_OVER_CONTROLS
+}]:not([${Attributes.NO_AUTOHIDE}]):not([${
+  MediaUIAttributes.MEDIA_PAUSED
+}]):not([${MediaUIAttributes.MEDIA_IS_CASTING}]):not([${Attributes.AUDIO}])) * {
+     --media-cursor: none;
+     cursor: none;
+    }
+
 
     ::slotted(media-control-bar)  {
       align-self: stretch;
@@ -288,6 +305,7 @@ function getBreakpoints(breakpoints: Record<string, string>, width: number) {
  *
  * @attr {boolean} audio
  * @attr {string} autohide
+ * @attr {boolean} autohideovercontrols
  * @attr {string} breakpoints
  * @attr {boolean} gesturesdisabled
  * @attr {boolean} keyboardcontrol
@@ -402,7 +420,7 @@ class MediaContainer extends globalThis.HTMLElement {
     observeResize(this, this.#handleResize);
 
     const isAudioChrome = this.getAttribute(Attributes.AUDIO) != null;
-    const label = isAudioChrome ? nouns.AUDIO_PLAYER() : nouns.VIDEO_PLAYER();
+    const label = isAudioChrome ? t('audio player') : t('video player');
     this.setAttribute('role', 'region');
     this.setAttribute('aria-label', label);
 
@@ -558,8 +576,12 @@ class MediaContainer extends globalThis.HTMLElement {
     clearTimeout(this.#inactiveTimeout);
 
     // If hovering over something other than controls, we're free to make inactive
+
+    const autohideOverControls = this.hasAttribute(
+      Attributes.AUTOHIDE_OVER_CONTROLS
+    );
     // @ts-ignore
-    if ([this, this.media].includes(event.target)) {
+    if ([this, this.media].includes(event.target) || autohideOverControls) {
       this.#scheduleInactive();
     }
   }
@@ -596,7 +618,7 @@ class MediaContainer extends globalThis.HTMLElement {
     this.setAttribute(Attributes.USER_INACTIVE, '');
 
     const evt = new globalThis.CustomEvent(
-      MediaStateChangeEvents.USER_INACTIVE,
+      MediaStateChangeEvents.USER_INACTIVE_CHANGE,
       { composed: true, bubbles: true, detail: true }
     );
     this.dispatchEvent(evt);
@@ -608,7 +630,7 @@ class MediaContainer extends globalThis.HTMLElement {
     this.removeAttribute(Attributes.USER_INACTIVE);
 
     const evt = new globalThis.CustomEvent(
-      MediaStateChangeEvents.USER_INACTIVE,
+      MediaStateChangeEvents.USER_INACTIVE_CHANGE,
       { composed: true, bubbles: true, detail: false }
     );
     this.dispatchEvent(evt);
@@ -637,6 +659,62 @@ class MediaContainer extends globalThis.HTMLElement {
 
   get autohide(): string {
     return (this.#autohide === undefined ? 2 : this.#autohide).toString();
+  }
+
+  get breakpoints(): string | undefined {
+    return getStringAttr(this, Attributes.BREAKPOINTS);
+  }
+
+  set breakpoints(value: string | undefined) {
+    setStringAttr(this, Attributes.BREAKPOINTS, value);
+  }
+
+  get audio(): boolean | undefined {
+    return getBooleanAttr(this, Attributes.AUDIO);
+  }
+
+  set audio(value: boolean | undefined) {
+    setBooleanAttr(this, Attributes.AUDIO, value);
+  }
+
+  get gesturesDisabled(): boolean | undefined {
+    return getBooleanAttr(this, Attributes.GESTURES_DISABLED);
+  }
+
+  set gesturesDisabled(value: boolean | undefined) {
+    setBooleanAttr(this, Attributes.GESTURES_DISABLED, value);
+  }
+
+  get keyboardControl(): boolean | undefined {
+    return getBooleanAttr(this, Attributes.KEYBOARD_CONTROL);
+  }
+
+  set keyboardControl(value: boolean | undefined) {
+    setBooleanAttr(this, Attributes.KEYBOARD_CONTROL, value);
+  }
+
+  get noAutohide(): boolean | undefined {
+    return getBooleanAttr(this, Attributes.NO_AUTOHIDE);
+  }
+
+  set noAutohide(value: boolean | undefined) {
+    setBooleanAttr(this, Attributes.NO_AUTOHIDE, value);
+  }
+
+  get autohideOverControls(): boolean | undefined {
+    return getBooleanAttr(this, Attributes.AUTOHIDE_OVER_CONTROLS);
+  }
+
+  set autohideOverControls(value: boolean | undefined) {
+    setBooleanAttr(this, Attributes.AUTOHIDE_OVER_CONTROLS, value);
+  }
+
+  get userInteractive(): boolean | undefined {
+    return getBooleanAttr(this, Attributes.USER_INACTIVE);
+  }
+
+  set userInteractive(value: boolean | undefined) {
+    setBooleanAttr(this, Attributes.USER_INACTIVE, value);
   }
 }
 

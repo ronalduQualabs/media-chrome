@@ -24,12 +24,16 @@ import {
   MediaUIProps,
 } from './constants.js';
 import {
+  getBooleanAttr,
+  getNumericAttr,
+  getStringAttr,
   setBooleanAttr,
   setNumericAttr,
   setStringAttr,
 } from './utils/element-utils.js';
 import { createMediaStore, MediaStore } from './media-store/media-store.js';
 import { CustomElement } from './utils/CustomElement.js';
+import { setLanguage } from './utils/i18n.js';
 
 const ButtonPressedKeys = [
   'ArrowLeft',
@@ -51,6 +55,7 @@ export const Attributes = {
   HOTKEYS: 'hotkeys',
   KEYS_USED: 'keysused',
   LIVE_EDGE_OFFSET: 'liveedgeoffset',
+  SEEK_TO_LIVE_OFFSET: 'seektoliveoffset',
   NO_AUTO_SEEK_TO_LIVE: 'noautoseektolive',
   NO_HOTKEYS: 'nohotkeys',
   NO_VOLUME_PREF: 'novolumepref',
@@ -58,6 +63,7 @@ export const Attributes = {
   NO_DEFAULT_STORE: 'nodefaultstore',
   KEYBOARD_FORWARD_SEEK_OFFSET: 'keyboardforwardseekoffset',
   KEYBOARD_BACKWARD_SEEK_OFFSET: 'keyboardbackwardseekoffset',
+  LANG: 'lang',
 };
 
 /**
@@ -72,10 +78,12 @@ export const Attributes = {
  * @attr {string} hotkeys
  * @attr {string} keysused
  * @attr {string} liveedgeoffset
+ * @attr {string} seektoliveoffset
  * @attr {boolean} noautoseektolive
  * @attr {boolean} novolumepref
  * @attr {boolean} nosubtitleslangpref
  * @attr {boolean} nodefaultstore
+ * @attr {string} lang
  */
 class MediaController extends MediaContainer {
   static get observedAttributes() {
@@ -84,7 +92,8 @@ class MediaController extends MediaContainer {
       Attributes.HOTKEYS,
       Attributes.DEFAULT_STREAM_TYPE,
       Attributes.DEFAULT_SUBTITLES,
-      Attributes.DEFAULT_DURATION
+      Attributes.DEFAULT_DURATION,
+      Attributes.LANG
     );
   }
 
@@ -144,6 +153,12 @@ class MediaController extends MediaContainer {
         liveEdgeOffset: this.hasAttribute(Attributes.LIVE_EDGE_OFFSET)
           ? +this.getAttribute(Attributes.LIVE_EDGE_OFFSET)
           : undefined,
+        seekToLiveOffset: this.hasAttribute(Attributes.SEEK_TO_LIVE_OFFSET)
+          ? +this.getAttribute(Attributes.SEEK_TO_LIVE_OFFSET)
+          : this.hasAttribute(Attributes.LIVE_EDGE_OFFSET)
+          ? +this.getAttribute(Attributes.LIVE_EDGE_OFFSET)
+          : undefined,
+        noAutoSeekToLive: this.hasAttribute(Attributes.NO_AUTO_SEEK_TO_LIVE),
         // NOTE: This wasn't updated if it was changed later. Should it be? (CJP)
         noVolumePref: this.hasAttribute(Attributes.NO_VOLUME_PREF),
         noSubtitlesLangPref: this.hasAttribute(
@@ -188,6 +203,86 @@ class MediaController extends MediaContainer {
       type: 'fullscreenelementchangerequest',
       detail: this.fullscreenElement,
     });
+  }
+
+  get defaultSubtitles(): boolean | undefined {
+    return getBooleanAttr(this, Attributes.DEFAULT_SUBTITLES);
+  }
+
+  set defaultSubtitles(value: boolean) {
+    setBooleanAttr(this, Attributes.DEFAULT_SUBTITLES, value);
+  }
+
+  get defaultStreamType(): string | undefined {
+    return getStringAttr(this, Attributes.DEFAULT_STREAM_TYPE);
+  }
+
+  set defaultStreamType(value: string | undefined) {
+    setStringAttr(this, Attributes.DEFAULT_STREAM_TYPE, value);
+  }
+
+  get defaultDuration(): number | undefined {
+    return getNumericAttr(this, Attributes.DEFAULT_DURATION);
+  }
+
+  set defaultDuration(value: number | undefined) {
+    setNumericAttr(this, Attributes.DEFAULT_DURATION, value);
+  }
+
+  get noHotkeys(): boolean | undefined {
+    return getBooleanAttr(this, Attributes.NO_HOTKEYS);
+  }
+
+  set noHotkeys(value: boolean | undefined) {
+    setBooleanAttr(this, Attributes.NO_HOTKEYS, value);
+  }
+
+  get keysUsed(): string | undefined {
+    return getStringAttr(this, Attributes.KEYS_USED);
+  }
+
+  set keysUsed(value: string | undefined) {
+    setStringAttr(this, Attributes.KEYS_USED, value);
+  }
+
+  get liveEdgeOffset(): number | undefined {
+    return getNumericAttr(this, Attributes.LIVE_EDGE_OFFSET);
+  }
+
+  set liveEdgeOffset(value: number | undefined) {
+    setNumericAttr(this, Attributes.LIVE_EDGE_OFFSET, value);
+  }
+
+  get noAutoSeekToLive(): boolean | undefined {
+    return getBooleanAttr(this, Attributes.NO_AUTO_SEEK_TO_LIVE);
+  }
+
+  set noAutoSeekToLive(value: boolean | undefined) {
+    setBooleanAttr(this, Attributes.NO_AUTO_SEEK_TO_LIVE, value);
+  }
+
+  get noVolumePref(): boolean | undefined {
+    return getBooleanAttr(this, Attributes.NO_VOLUME_PREF);
+  }
+
+  set noVolumePref(value: boolean | undefined) {
+    setBooleanAttr(this, Attributes.NO_VOLUME_PREF, value);
+  }
+
+  get noSubtitlesLangPref(): boolean | undefined {
+    return getBooleanAttr(this, Attributes.NO_SUBTITLES_LANG_PREF);
+  }
+
+  set noSubtitlesLangPref(value: boolean | undefined) {
+    setBooleanAttr(this, Attributes.NO_SUBTITLES_LANG_PREF, value);
+  }
+
+  get noDefaultStore(): boolean | undefined {
+    return getBooleanAttr(this, Attributes.NO_DEFAULT_STORE);
+  }
+
+  set noDefaultStore(value: boolean | undefined) {
+    setBooleanAttr(this, Attributes.NO_DEFAULT_STORE, value);
   }
 
   attributeChangedCallback(
@@ -235,6 +330,25 @@ class MediaController extends MediaContainer {
           liveEdgeOffset: this.hasAttribute(Attributes.LIVE_EDGE_OFFSET)
             ? +this.getAttribute(Attributes.LIVE_EDGE_OFFSET)
             : undefined,
+          seekToLiveOffset: !this.hasAttribute(Attributes.SEEK_TO_LIVE_OFFSET)
+            ? +this.getAttribute(Attributes.LIVE_EDGE_OFFSET)
+            : undefined,
+        },
+      });
+    } else if (attrName === Attributes.SEEK_TO_LIVE_OFFSET) {
+      this.#mediaStore?.dispatch({
+        type: 'optionschangerequest',
+        detail: {
+          seekToLiveOffset: this.hasAttribute(Attributes.SEEK_TO_LIVE_OFFSET)
+            ? +this.getAttribute(Attributes.SEEK_TO_LIVE_OFFSET)
+            : undefined,
+        },
+      });
+    } else if (attrName === Attributes.NO_AUTO_SEEK_TO_LIVE) {
+      this.#mediaStore?.dispatch({
+        type: 'optionschangerequest',
+        detail: {
+          noAutoSeekToLive: this.hasAttribute(Attributes.NO_AUTO_SEEK_TO_LIVE),
         },
       });
     } else if (attrName === Attributes.FULLSCREEN_ELEMENT) {
@@ -250,6 +364,8 @@ class MediaController extends MediaContainer {
         type: 'fullscreenelementchangerequest',
         detail: this.fullscreenElement,
       });
+    } else if (attrName === Attributes.LANG && newValue !== oldValue) {
+      setLanguage(newValue);
     }
   }
 
@@ -445,8 +561,12 @@ class MediaController extends MediaContainer {
     this.removeEventListener('keyup', this.#keyUpHandler);
   }
 
-  get hotkeys() {
-    return this.#hotKeys;
+  get hotkeys(): string | undefined {
+    return getStringAttr(this, Attributes.HOTKEYS);
+  }
+
+  set hotkeys(value: string | undefined) {
+    setStringAttr(this, Attributes.HOTKEYS, value);
   }
 
   keyboardShortcutHandler(e: KeyboardEvent) {

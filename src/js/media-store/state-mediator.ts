@@ -5,7 +5,11 @@ import {
   TextTrackKinds,
 } from '../constants.js';
 import { containsComposedNode } from '../utils/element-utils.js';
-import { enterFullscreen, exitFullscreen, isFullscreen } from '../utils/fullscreen-api.js';
+import {
+  enterFullscreen,
+  exitFullscreen,
+  isFullscreen,
+} from '../utils/fullscreen-api.js';
 import {
   airplaySupported,
   castSupported,
@@ -85,7 +89,10 @@ export type StateOption = {
   defaultStreamType?: StreamTypes;
   defaultDuration?: number;
   liveEdgeOffset?: number;
+  seekToLiveOffset?: number;
+  noAutoSeekToLive?: boolean;
   noVolumePref?: boolean;
+  noMutedPref?: boolean;
   noSubtitlesLangPref?: boolean;
 };
 
@@ -288,27 +295,30 @@ export const prepareStateOwners = async (
 
 export const stateMediator: StateMediator = {
   mediaError: {
-    get(stateOwners) {
+    get(stateOwners, event) {
       const { media } = stateOwners;
+      if (event?.type === 'playing') return;
       // Add additional error info via the `mediaError` element property only.
       // This can be used in the MediaErrorDialog.formatErrorMessage() method.
       return media?.error;
     },
-    mediaEvents: ['emptied', 'error'],
+    mediaEvents: ['emptied', 'error', 'playing'],
   },
   mediaErrorCode: {
-    get(stateOwners) {
+    get(stateOwners, event) {
       const { media } = stateOwners;
+      if (event?.type === 'playing') return;
       return media?.error?.code;
     },
-    mediaEvents: ['emptied', 'error'],
+    mediaEvents: ['emptied', 'error', 'playing'],
   },
   mediaErrorMessage: {
-    get(stateOwners) {
+    get(stateOwners, event) {
       const { media } = stateOwners;
+      if (event?.type === 'playing') return;
       return media?.error?.message ?? '';
     },
-    mediaEvents: ['emptied', 'error'],
+    mediaEvents: ['emptied', 'error', 'playing'],
   },
   mediaWidth: {
     get(stateOwners) {
@@ -386,9 +396,39 @@ export const stateMediator: StateMediator = {
     set(value, stateOwners) {
       const { media } = stateOwners;
       if (!media) return;
+
+      try {
+        globalThis.localStorage.setItem(
+          'media-chrome-pref-muted',
+          value ? 'true' : 'false'
+        );
+      } catch (e) {
+        console.debug('Error setting muted pref', e);
+      }
+
       media.muted = value;
     },
     mediaEvents: ['volumechange'],
+    stateOwnersUpdateHandlers: [
+      (handler, stateOwners) => {
+        const {
+          options: { noMutedPref },
+        } = stateOwners;
+        const { media } = stateOwners;
+        // The muted enabled attribute should still override the preference.
+        if (!media || media.muted || noMutedPref) return;
+        try {
+          const mutedPref =
+            globalThis.localStorage.getItem('media-chrome-pref-muted') ===
+            'true';
+
+          stateMediator.mediaMuted.set(mutedPref, stateOwners);
+          handler(mutedPref);
+        } catch (e) {
+          console.debug('Error getting muted pref', e);
+        }
+      },
+    ],
   },
   mediaVolume: {
     get(stateOwners) {
@@ -410,8 +450,8 @@ export const stateMediator: StateMediator = {
             value.toString()
           );
         }
-      } catch (err) {
-        // ignore
+      } catch (e) {
+        console.debug('Error setting volume pref', e);
       }
       if (!Number.isFinite(+value)) return;
       media.volume = +value;
@@ -425,9 +465,13 @@ export const stateMediator: StateMediator = {
         if (noVolumePref) return;
         /** @TODO How should we handle globalThis dependencies/"state ownership"? (CJP) */
         try {
+          const { media } = stateOwners;
+          if (!media) return;
+
           const volumePref = globalThis.localStorage.getItem(
             'media-chrome-pref-volume'
           );
+
           if (volumePref == null) return;
           stateMediator.mediaVolume.set(+volumePref, stateOwners);
           handler(+volumePref);
@@ -657,6 +701,10 @@ export const stateMediator: StateMediator = {
           toggleSubtitleTracks(stateOwners, true);
         };
 
+        media.addEventListener(
+          'loadstart',
+          updateDefaultSubtitlesCallback
+        );
         media.textTracks?.addEventListener(
           'addtrack',
           updateDefaultSubtitlesCallback
@@ -666,10 +714,11 @@ export const stateMediator: StateMediator = {
           updateDefaultSubtitlesCallback
         );
 
-        // Invoke immediately as well, in case subs/cc tracks are already added
-        updateDefaultSubtitlesCallback();
-
         return () => {
+          media.removeEventListener(
+            'loadstart',
+            updateDefaultSubtitlesCallback
+          );
           media.textTracks?.removeEventListener(
             'addtrack',
             updateDefaultSubtitlesCallback
@@ -934,7 +983,11 @@ export const stateMediator: StateMediator = {
     // older Safari version may require webkit-specific events
     rootEvents: ['fullscreenchange', 'webkitfullscreenchange'],
     // iOS requires webkit-specific events on the video.
-    mediaEvents: ['webkitbeginfullscreen', 'webkitendfullscreen', 'webkitpresentationmodechanged']
+    mediaEvents: [
+      'webkitbeginfullscreen',
+      'webkitendfullscreen',
+      'webkitpresentationmodechanged',
+    ],
   },
   mediaIsCasting: {
     // Note this relies on a customized castable-video element.

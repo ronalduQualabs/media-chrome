@@ -52,6 +52,7 @@ export const SIDEBAR: Sidebar = {
       { text: 'Styling', link: 'docs/en/styling' },
     ],
     Guides: [
+      { text: 'Media controller', link: 'docs/en/components/media-controller' },
       { text: 'Media element', link: 'docs/en/media-element' },
       { text: 'Prevent layout shift', link: 'docs/en/prevent-layout-shift' },
       { text: 'Position controls', link: 'docs/en/position-controls' },
@@ -115,6 +116,9 @@ export const SIDEBAR: Sidebar = {
     React: [
       { text: 'Get started', link: 'docs/en/react/get-started' },
       { text: 'MediaStore hooks', link: 'docs/en/react/hooks' },
+    ],
+    Internationalization: [
+      { text: 'Adding Language Support', link: 'docs/en/internationalization/adding-language-support' },
     ],
     Resources: [
       { text: 'Styling Reference', link: 'docs/en/reference/styling' },

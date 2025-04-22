@@ -26,7 +26,7 @@ template.innerHTML = /*html*/ `
       position: relative;
       width: 100px;
       transition: background .15s linear;
-      cursor: pointer;
+      cursor: var(--media-cursor, pointer);
       pointer-events: auto;
       touch-action: none; ${/* Prevent scrolling when dragging on mobile. */ ''}
     }
@@ -80,7 +80,7 @@ template.innerHTML = /*html*/ `
       height: var(--media-time-range-hover-height, max(100% + 7px, 25px));
       width: 100%;
       position: absolute;
-      cursor: pointer;
+      cursor: var(--media-cursor, pointer);
 
       -webkit-appearance: none; ${
         /* Hides the slider so that custom slider can be made */ ''
@@ -171,20 +171,24 @@ template.innerHTML = /*html*/ `
       }
     }
 
-    #thumb {
+    #thumb,
+    ::slotted([slot=thumb]) {
       width: var(--media-range-thumb-width, 10px);
       height: var(--media-range-thumb-height, 10px);
-      margin-left: calc(var(--media-range-thumb-width, 10px) / -2);
-      border: var(--media-range-thumb-border, none);
-      border-radius: var(--media-range-thumb-border-radius, 10px);
-      background: var(--media-range-thumb-background, var(--media-primary-color, rgb(238 238 238)));
-      box-shadow: var(--media-range-thumb-box-shadow, 1px 1px 1px transparent);
       transition: var(--media-range-thumb-transition);
       transform: var(--media-range-thumb-transform, none);
       opacity: var(--media-range-thumb-opacity, 1);
+      translate: -50%;
       position: absolute;
       left: 0;
-      cursor: pointer;
+      cursor: var(--media-cursor, pointer);
+    }
+
+    #thumb {
+      border-radius: var(--media-range-thumb-border-radius, 10px);
+      background: var(--media-range-thumb-background, var(--media-primary-color, rgb(238 238 238)));
+      box-shadow: var(--media-range-thumb-box-shadow, 1px 1px 1px transparent);
+      border: var(--media-range-thumb-border, none);
     }
 
     :host([disabled]) #thumb {
@@ -231,7 +235,9 @@ template.innerHTML = /*html*/ `
         <div id="pointer"></div>
         <div id="progress" part="progress"></div>
       </div>
-      <div id="thumb" part="thumb"></div>
+      <slot name="thumb">
+        <div id="thumb" part="thumb"></div>
+      </slot>
       <svg id="segments"><clipPath id="segments-clipping"></clipPath></svg>
     </div>
     <input id="range" type="range" min="0" max="1" step="any" value="0">
@@ -241,6 +247,8 @@ template.innerHTML = /*html*/ `
 
 /**
  * @extends {HTMLElement}
+ *
+ * @slot thumb - The thumb element to use for the range.
  *
  * @attr {boolean} disabled - The Boolean disabled attribute makes the element not mutable or focusable.
  * @attr {string} mediacontroller - The element `id` of the media controller to connect to (if not nested within).
@@ -385,7 +393,10 @@ class MediaChromeRange extends globalThis.HTMLElement {
 
     this.#cssRules.pointer = getOrInsertCSSRule(this.shadowRoot, '#pointer');
     this.#cssRules.progress = getOrInsertCSSRule(this.shadowRoot, '#progress');
-    this.#cssRules.thumb = getOrInsertCSSRule(this.shadowRoot, '#thumb');
+    this.#cssRules.thumb = getOrInsertCSSRule(
+      this.shadowRoot,
+      '#thumb, ::slotted([slot="thumb"])'
+    );
     this.#cssRules.activeSegment = getOrInsertCSSRule(
       this.shadowRoot,
       '#segments-clipping rect:nth-child(0)'
@@ -507,13 +518,12 @@ class MediaChromeRange extends globalThis.HTMLElement {
   }
 
   getPointerRatio(evt) {
-    const pointerRatio = getPointProgressOnLine(
+    return getPointProgressOnLine(
       evt.clientX,
       evt.clientY,
       this.#startpoint.getBoundingClientRect(),
       this.#endpoint.getBoundingClientRect()
     );
-    return Math.max(0, Math.min(1, pointerRatio));
   }
 
   get dragging() {

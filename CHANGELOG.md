@@ -1,3 +1,90 @@
+# [4.9.0](https://github.com/muxinc/media-chrome/compare/v4.8.0...v4.9.0) (2025-03-28)
+
+
+### Bug Fixes
+
+* race condition w/ default subtitles (Vue) ([#1106](https://github.com/muxinc/media-chrome/issues/1106)) ([98f2dff](https://github.com/muxinc/media-chrome/commit/98f2dffaeda9610bce1845cf13bbad3224286fc3))
+* simplify exports, resolve tests. fix lang prop type issue ([#1108](https://github.com/muxinc/media-chrome/issues/1108)) ([08b2c2c](https://github.com/muxinc/media-chrome/commit/08b2c2c3152fd354803c09463908b13a4fd2dcd7))
+* timerange thumb and tooltip drift mobile ([#1098](https://github.com/muxinc/media-chrome/issues/1098)) ([fe3e214](https://github.com/muxinc/media-chrome/commit/fe3e2144d5f073ad9cdbc378a62e90816550a20a)), closes [#883](https://github.com/muxinc/media-chrome/issues/883)
+
+
+### Features
+
+* Add seektoliveoffset attribute ([#958](https://github.com/muxinc/media-chrome/issues/958)) ([0f4feac](https://github.com/muxinc/media-chrome/commit/0f4feac296c211b8b4db4d8eceedea7e0d117f6e))
+* hide-cursor-controls-on-inactivity ([#1101](https://github.com/muxinc/media-chrome/issues/1101)) ([849b680](https://github.com/muxinc/media-chrome/commit/849b68054f71ab81204ca7c651ce11c80ab2ecfe)), closes [#756](https://github.com/muxinc/media-chrome/issues/756)
+* set i18n through media-controller ([#1105](https://github.com/muxinc/media-chrome/issues/1105)) ([1425887](https://github.com/muxinc/media-chrome/commit/14258873885e2303b8643f7e05129060a030caaf))
+
+
+
+# [4.8.0](https://github.com/muxinc/media-chrome/compare/v4.7.1...v4.8.0) (2025-03-12)
+
+
+### Features
+
+* persist muted enabled state ([#1088](https://github.com/muxinc/media-chrome/issues/1088)) ([94b3ea8](https://github.com/muxinc/media-chrome/commit/94b3ea8c341c019d13fd905d659016e0fda2b33a)), closes [#1072](https://github.com/muxinc/media-chrome/issues/1072)
+
+
+
+## [4.7.1](https://github.com/muxinc/media-chrome/compare/v4.7.0...v4.7.1) (2025-03-04)
+
+
+### Bug Fixes
+
+* MediaTheme React type ([#1089](https://github.com/muxinc/media-chrome/issues/1089)) ([3a7c933](https://github.com/muxinc/media-chrome/commit/3a7c933407b020ec84d96277c3a4cb413f2d5f4a))
+
+
+
+# [4.7.0](https://github.com/muxinc/media-chrome/compare/v4.6.1...v4.7.0) (2025-02-28)
+
+
+### Bug Fixes
+
+* 4.6.0+ no longer has typings for React ([#1085](https://github.com/muxinc/media-chrome/issues/1085)) ([0dfa1d6](https://github.com/muxinc/media-chrome/commit/0dfa1d6dcff7c722221f50bf5d211921d67c9bc2))
+
+
+### Features
+
+* show Auto(mediaHeight) in rendition menu ([#1075](https://github.com/muxinc/media-chrome/issues/1075)) ([005d305](https://github.com/muxinc/media-chrome/commit/005d305ecc19b9e7ed5be2a0230a41360ed66bb6)), closes [#1052](https://github.com/muxinc/media-chrome/issues/1052)
+
+
+
+## [4.6.1](https://github.com/muxinc/media-chrome/compare/v4.6.0...v4.6.1) (2025-02-27)
+
+
+### Bug Fixes
+
+* dialog accessibility hidden, page load bug ([#1082](https://github.com/muxinc/media-chrome/issues/1082)) ([374eee3](https://github.com/muxinc/media-chrome/commit/374eee3755de98df1afd748c6a1521fa8bf69cdd))
+
+
+
+# [4.6.0](https://github.com/muxinc/media-chrome/compare/v4.5.0...v4.6.0) (2025-02-25)
+
+
+### Bug Fixes
+
+* firefox pip activates when clicked through on settings menu ([#1074](https://github.com/muxinc/media-chrome/issues/1074)) ([778b503](https://github.com/muxinc/media-chrome/commit/778b5030717960099ef732b79593d7ab725a04f9))
+
+
+### Features
+
+* Refactor to use ce-la-react to add type definitions for JSX attributes ([#1068](https://github.com/muxinc/media-chrome/issues/1068)) ([d20dd95](https://github.com/muxinc/media-chrome/commit/d20dd957b53d0eecaf1176d15e23f829c26e941d))
+
+
+
+# [4.5.0](https://github.com/muxinc/media-chrome/compare/v4.4.0...v4.5.0) (2025-02-13)
+
+
+### Bug Fixes
+
+* hide error dialog on playback recovery ([#1065](https://github.com/muxinc/media-chrome/issues/1065)) ([4d21bd7](https://github.com/muxinc/media-chrome/commit/4d21bd7170dc7739aa9489929d80a01d50afa60e))
+
+
+### Features
+
+* add range `thumb` slot ([#1013](https://github.com/muxinc/media-chrome/issues/1013)) ([beb0955](https://github.com/muxinc/media-chrome/commit/beb0955646ca003238b01ae20bc824b019de5c5c))
+
+
+
 # [4.4.0](https://github.com/muxinc/media-chrome/compare/v4.3.1...v4.4.0) (2025-01-29)
 
 

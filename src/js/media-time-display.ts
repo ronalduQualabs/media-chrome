@@ -9,7 +9,7 @@ import {
 import { globalThis } from './utils/server-safe-globals.js';
 import { formatAsTimePhrase, formatTime } from './utils/time.js';
 import { MediaUIAttributes } from './constants.js';
-import { nouns } from './labels/labels.js';
+import { t } from './utils/i18n.js';
 
 export const Attributes = {
   REMAINING: 'remaining',
@@ -115,7 +115,7 @@ class MediaTimeDisplay extends MediaTextDisplay {
       this.shadowRoot,
       ':host(:hover:not([notoggle]))'
     );
-    style.setProperty('cursor', 'pointer');
+    style.setProperty('cursor', 'var(--media-cursor, pointer)');
     style.setProperty(
       'background',
       'var(--media-control-hover-background, rgba(50 50 70 / .7))'
@@ -126,7 +126,7 @@ class MediaTimeDisplay extends MediaTextDisplay {
     }
 
     this.setAttribute('role', 'progressbar');
-    this.setAttribute('aria-label', nouns.PLAYBACK_TIME());
+    this.setAttribute('aria-label', t('playback time'));
 
     const keyUpHandler = (evt) => {
       const { key } = evt;
