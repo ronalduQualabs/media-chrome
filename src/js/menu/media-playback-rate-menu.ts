@@ -84,18 +84,23 @@ class MediaPlaybackRateMenu extends MediaChromeMenu {
   }
 
   /**
-   * Will return a DOMTokenList.
-   * Setting a value will accept an array of numbers.
+   * Get the playback rates for the button.
    */
-  get rates(): AttributeTokenList | number[] | undefined {
+  get rates(): AttributeTokenList | ArrayLike<number> | null | undefined {
     return this.#rates;
   }
 
-  set rates(value: AttributeTokenList | number[] | undefined) {
+  /**
+   * Set the playback rates for the button.
+   * For React 19+ compatibility, accept a string of space-separated rates.
+   */
+  set rates(value: ArrayLike<number> | string | null | undefined) {
     if (!value) {
       this.#rates.value = '';
     } else if (Array.isArray(value)) {
       this.#rates.value = value.join(' ');
+    } else if (typeof value === 'string') {
+      this.#rates.value = value;
     }
     this.#render();
   }
@@ -118,12 +123,12 @@ class MediaPlaybackRateMenu extends MediaChromeMenu {
   #render(): void {
     this.defaultSlot.textContent = '';
 
-    for (const rate of this.rates) {
+    for (const rate of this.#rates) {
       const item = createMenuItem({
         type: 'radio',
         text: this.formatMenuItemText(`${rate}x`, rate),
         value: rate as string,
-        checked: this.mediaPlaybackRate == rate,
+        checked: this.mediaPlaybackRate === Number(rate),
       });
       item.prepend(createIndicator(this, 'checked-indicator'));
       this.defaultSlot.append(item);

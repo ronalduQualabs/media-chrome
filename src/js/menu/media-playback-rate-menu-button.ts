@@ -1,7 +1,6 @@
-import { globalThis, document } from '../utils/server-safe-globals.js';
+import { globalThis } from '../utils/server-safe-globals.js';
 import { MediaUIAttributes } from '../constants.js';
 import { MediaChromeMenuButton } from './media-chrome-menu-button.js';
-import { AttributeTokenList } from '../utils/attribute-token-list.js';
 import {
   getNumericAttr,
   setNumericAttr,
@@ -9,57 +8,50 @@ import {
 } from '../utils/element-utils.js';
 import { t } from '../utils/i18n.js';
 
-export const Attributes = {
-  RATES: 'rates',
-};
-
-export const DEFAULT_RATES = [1, 1.2, 1.5, 1.7, 2];
 export const DEFAULT_RATE = 1;
 
-const slotTemplate: HTMLTemplateElement = document.createElement('template');
-slotTemplate.innerHTML = /*html*/ `
-  <style>
-    :host {
-      min-width: 5ch;
-      padding: var(--media-button-padding, var(--media-control-padding, 10px 5px));
-    }
-    
-    :host([aria-expanded="true"]) slot[name=tooltip] {
-      display: none;
-    }
-  </style>
-  <slot name="icon"></slot>
-`;
+function getSlotTemplateHTML(attrs: Record<string, string>) {
+  return /*html*/ `
+    <style>
+      :host {
+        min-width: 5ch;
+        padding: var(--media-button-padding, var(--media-control-padding, 10px 5px));
+      }
+      
+      :host([aria-expanded="true"]) slot[name=tooltip] {
+        display: none;
+      }
+    </style>
+    <slot name="icon">${attrs['mediaplaybackrate'] || DEFAULT_RATE}x</slot>
+  `;
+}
+
+function getTooltipContentHTML() {
+  return t('Playback rate');
+}
 
 /**
- * @attr {string} rates - Set custom playback rates for the user to choose from.
  * @attr {string} mediaplaybackrate - (read-only) Set to the media playback rate.
  *
  * @cssproperty [--media-playback-rate-menu-button-display = inline-flex] - `display` property of button.
  */
 class MediaPlaybackRateMenuButton extends MediaChromeMenuButton {
+  static getSlotTemplateHTML = getSlotTemplateHTML;
+  static getTooltipContentHTML = getTooltipContentHTML;
+
   static get observedAttributes(): string[] {
     return [
       ...super.observedAttributes,
       MediaUIAttributes.MEDIA_PLAYBACK_RATE,
-      Attributes.RATES,
     ];
   }
 
-  #rates = new AttributeTokenList(this, Attributes.RATES, {
-    defaultValue: DEFAULT_RATES,
-  });
-
   container: HTMLSlotElement;
 
-  constructor(options = {}) {
-    super({
-      slotTemplate,
-      tooltipContent: t('Playback rate'),
-      ...options,
-    });
+  constructor() {
+    super();
     this.container = this.shadowRoot.querySelector('slot[name="icon"]');
-    this.container.innerHTML = `${DEFAULT_RATE}x`;
+    this.container.innerHTML = `${this.mediaPlaybackRate ?? DEFAULT_RATE}x`;
   }
 
   attributeChangedCallback(
@@ -69,9 +61,6 @@ class MediaPlaybackRateMenuButton extends MediaChromeMenuButton {
   ): void {
     super.attributeChangedCallback(attrName, oldValue, newValue);
 
-    if (attrName === Attributes.RATES) {
-      this.#rates.value = newValue;
-    }
     if (attrName === MediaUIAttributes.MEDIA_PLAYBACK_RATE) {
       const newPlaybackRate = newValue ? +newValue : Number.NaN;
       const playbackRate = !Number.isNaN(newPlaybackRate)
@@ -91,22 +80,6 @@ class MediaPlaybackRateMenuButton extends MediaChromeMenuButton {
   get invokeTargetElement(): HTMLElement | null {
     if (this.invokeTarget != undefined) return super.invokeTargetElement;
     return getMediaController(this).querySelector('media-playback-rate-menu');
-  }
-
-  /**
-   * Will return a DOMTokenList.
-   * Setting a value will accept an array of numbers.
-   */
-  get rates(): AttributeTokenList | number[] | undefined {
-    return this.#rates;
-  }
-
-  set rates(value: AttributeTokenList | number[] | undefined) {
-    if (!value) {
-      this.#rates.value = '';
-    } else if (Array.isArray(value)) {
-      this.#rates.value = value.join(' ');
-    }
   }
 
   /**
